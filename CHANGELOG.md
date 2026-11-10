@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1 (2026-11-11)
+
+- Fix: the consumer test harness now works with the npm 10 bundled in Node 22. `npm pack` runs the `prepare` build there, so the harness no longer fails to parse `test/consumers/run.mjs`. Test-only change; the library code is unchanged.
+
 ## 0.1.0 (2026-11-11)
 
 - Core: `createVault`, `detect`, `pseudonymize`, `restore`, `createStreamRestorer`, `createJsonStringRestorer`, `restoreJsonText`, `hasBatchim`, `attachJosa`, `pickJosa`.
