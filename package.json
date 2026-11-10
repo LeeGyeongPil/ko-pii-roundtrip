@@ -1,0 +1,122 @@
+{
+  "name": "ko-pii-roundtrip",
+  "version": "0.1.0",
+  "description": "Reversible Korean PII pseudonymization for LLM calls: checksum-aware detectors, streaming-safe restore and josa (조사) correction, with Vercel AI SDK middleware and an openai client wrapper.",
+  "license": "MIT",
+  "author": "LeeGyeongPil",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LeeGyeongPil/ko-pii-roundtrip.git"
+  },
+  "homepage": "https://github.com/LeeGyeongPil/ko-pii-roundtrip#readme",
+  "bugs": {
+    "url": "https://github.com/LeeGyeongPil/ko-pii-roundtrip/issues"
+  },
+  "keywords": [
+    "pii",
+    "korean",
+    "pseudonymization",
+    "anonymization",
+    "llm",
+    "ai-sdk",
+    "openai",
+    "streaming",
+    "josa",
+    "privacy"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=22.12"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.cts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      },
+      "default": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      }
+    },
+    "./ai-sdk": {
+      "import": {
+        "types": "./dist/ai-sdk.d.mts",
+        "default": "./dist/ai-sdk.mjs"
+      },
+      "require": {
+        "types": "./dist/ai-sdk.d.cts",
+        "default": "./dist/ai-sdk.cjs"
+      },
+      "default": {
+        "types": "./dist/ai-sdk.d.mts",
+        "default": "./dist/ai-sdk.mjs"
+      }
+    },
+    "./openai": {
+      "import": {
+        "types": "./dist/openai.d.mts",
+        "default": "./dist/openai.mjs"
+      },
+      "require": {
+        "types": "./dist/openai.d.cts",
+        "default": "./dist/openai.cjs"
+      },
+      "default": {
+        "types": "./dist/openai.d.mts",
+        "default": "./dist/openai.mjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
+    "test": "npm run build && npm run typecheck && vitest run",
+    "example": "npm run build && node examples/demo.mjs",
+    "test:consumers": "npm run build && node test/consumers/run.mjs",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm test"
+  },
+  "peerDependencies": {
+    "ai": "^7.0.0",
+    "openai": "^7.0.0"
+  },
+  "peerDependenciesMeta": {
+    "ai": {
+      "optional": true
+    },
+    "openai": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@ai-sdk/provider": "4.0.37",
+    "@types/node": "22.20.5",
+    "ai": "7.0.166",
+    "es-hangul": "2.4.0",
+    "fast-check": "4.10.2",
+    "openai": "7.55.0",
+    "tsdown": "0.23.7",
+    "typescript": "7.0.2",
+    "vite": "7.3.8",
+    "vitest": "5.1.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
