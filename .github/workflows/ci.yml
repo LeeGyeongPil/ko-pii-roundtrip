@@ -1,0 +1,46 @@
+# 키·모델·네트워크 없이 연습용 목(mock) 모드로 전체를 검증한다.
+# - test: .nvmrc(Node 22 최신)로 빌드 + 타입 검사 + 전체 테스트 + 예제
+# - consumers: 빌드 결과(npm pack tarball)를 Node 22.12.0·24·26 의 ESM·CJS 임시 프로젝트에 설치해 실행·타입 검사
+name: ci
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "17 3 * * 1"   # 매주 월요일 — 의존성·런타임이 바뀌어 깨지지 않았는지 정기 확인
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run example
+
+  consumers:
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["22.12.0", "24", "26"]
+    steps:
+      - uses: actions/checkout@v7.0.1
+      # 빌드 도구(tsdown)는 Node 22.18+ 가 필요하므로 .nvmrc 버전으로 설치·빌드한다
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      # 그다음 소비자 쪽 Node 로 바꿔 빌드 결과만 검사한다(engines 하한 22.12 포함)
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: ${{ matrix.node }}
+      - run: node --version && node test/consumers/run.mjs
