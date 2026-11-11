@@ -1,6 +1,6 @@
 {
   "name": "ko-pii-roundtrip",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Reversible Korean PII pseudonymization for LLM calls: checksum-aware detectors, streaming-safe restore and josa (조사) correction, with Vercel AI SDK middleware and an openai client wrapper.",
   "license": "MIT",
   "author": "LeeGyeongPil",
