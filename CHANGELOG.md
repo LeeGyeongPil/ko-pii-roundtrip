@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.3 (2026-11-11)
+
+- Fix: `+82` international phone numbers are now pseudonymized instead of leaking to the model. Mobile and landline forms are covered, with the country code as part of the matched span: separators after `+82` may be `-`, `.`, a space or nothing, an optional `(0)` or `0` trunk digit is accepted, and the number part follows the same rules as the domestic forms. `+82 010-…` used to leave `+82 ` in the text and now matches as a whole. Other country codes, `+82,…` amounts and numbers with extra trailing digits are still not detected. Out of scope (documented in the README): `0082-…`/`82-…` without `+`, `(+82) …`, mixed separators after the area part (a `+82-10-0000-1234` with only some hyphens replaced by spaces), 15xx/16xx/18xx numbers.
+
 ## 0.1.2 (2026-11-11)
 
 - Fix: names after `label명:` headings such as `고객명:` / `환자명:` (also with a full-width colon) are now pseudonymized instead of leaking to the model. A heading counts when it ends in `명`, the part before `명` is a known context word, and a colon follows. `고객명 홍길동` (no colon) is still not detected; use the `names` dictionary for that.
