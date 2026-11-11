@@ -1,5 +1,7 @@
 # ko-pii-roundtrip
 
+**한국어** | [English](README.en.md)
+
 > **English summary** — A TypeScript library that swaps Korean personal data (names, resident registration numbers, phone, business and card numbers, bank accounts, emails) for reversible placeholders before an LLM call, and restores the originals in the answer. It keeps streaming responses intact however the chunks are split, and fixes Korean particles (은/는, 이/가, …) after restoring. Ships a Vercel AI SDK 7 middleware and an `openai` 7 client wrapper; zero runtime dependencies, Node >= 22.12, ESM and CJS. Install: `npm install ko-pii-roundtrip ai` (or `openai`). Everything below runs offline with a mock model; it is an aid, not a legal-compliance guarantee.
 
 한국어 서비스에서 외부 LLM을 부를 때, 이름·주민등록번호·전화번호 같은 개인정보를 **되돌릴 수 있는 가명**(`[이름_1]`)으로 바꿔 보내고, 답이 돌아오면 **원래 값으로 복원**합니다. 스트리밍 답이 어떻게 쪼개져 와도 깨지지 않고, 복원한 뒤 어긋난 조사(`이예시은` → `이예시는`)까지 고칩니다.
