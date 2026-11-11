@@ -2,9 +2,7 @@
 
 [한국어](README.md) | **English**
 
-A TypeScript library that swaps Korean personal data (names, resident registration numbers, phone, business and card numbers, bank accounts, emails) for reversible placeholders before an LLM call, and restores the originals in the answer. It keeps streaming responses intact however the chunks are split, and fixes Korean particles (은/는, 이/가, …) after restoring. Ships a Vercel AI SDK 7 middleware and an `openai` 7 client wrapper; zero runtime dependencies, Node >= 22.12, ESM and CJS. Install: `npm install ko-pii-roundtrip ai` (or `openai`). Everything below runs offline with a mock model; it is an aid, not a legal-compliance guarantee.
-
-When a Korean-language service calls an external LLM, this library replaces personal data such as names, resident registration numbers and phone numbers with **reversible placeholders** (`[이름_1]`, "name 1") before sending, and **restores the original values** when the answer comes back. It does not break however a streamed answer is chunked, and it also fixes Korean particles that no longer fit after restoring (`이예시은` -> `이예시는`).
+A TypeScript library that swaps Korean personal data (names, resident registration numbers, phone, business and card numbers, bank accounts, emails) for reversible placeholders (`[이름_1]`, "name 1") before an LLM call, and restores the originals in the answer. It keeps streaming responses intact however the chunks are split, and fixes Korean particles (은/는, 이/가, …) after restoring (`이예시은` -> `이예시는`). Ships a Vercel AI SDK 7 middleware and an `openai` 7 client wrapper; zero runtime dependencies, Node >= 22.12, ESM and CJS. Install: `npm install ko-pii-roundtrip ai` (or `openai`). Everything below runs offline with a mock model; it is an aid, not a legal-compliance guarantee.
 
 > This library is an **aid** for protecting personal data. It does not guarantee legal compliance, and name detection is a conservative heuristic that can miss cases ([limits](#detection-rules-and-limits)).
 
