@@ -49,7 +49,11 @@ function contextBefore(text: string, at: number): Evidence['context'] {
   const sep = m?.[2] ?? '';
   if (m === null || sep === '') return null; // 구분자(공백·콜론) 없이 붙어 있으면 아님
   const word = (m[1] as string).replace(/님$/, '');
-  return CONTEXT_WORDS.has(word) ? { colon: /[:：]/.test(sep) } : null;
+  const colon = /[:：]/.test(sep);
+  if (CONTEXT_WORDS.has(word)) return { colon };
+  // '고객명:'·'환자명:' 꼴: 콜론이 있고 '명'을 뗀 앞부분이 문맥 낱말이면 표제로 본다(콜론 없는 '고객명 홍길동'은 오탐 위험 때문에 제외)
+  if (colon && word.length > 1 && word.endsWith('명') && CONTEXT_WORDS.has(word.slice(0, -1))) return { colon };
+  return null;
 }
 
 /** 후보(cand) 뒤에 suffix 가 붙은 꼴이 "흔한 낱말"로 읽혀서 이름이 아니라고 볼지 */
