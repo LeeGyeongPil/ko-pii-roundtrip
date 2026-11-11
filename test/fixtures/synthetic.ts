@@ -71,6 +71,25 @@ export function makeLandline(last4: string): string {
   return `02-0000-${last4}`;
 }
 
+/**
+ * 국제 표기 전화(합성): +82 + 국번(0000) + NNNN.
+ * head = '+82' 뒤 구분자, sep = 국번 뒤 구분자, trunk = 앞자리 0 표기('' | '0' | '(0)').
+ * 예: head '-' → +82-10-0000-NNNN, head '' + sep '' → 구분자 없이 붙여 쓴 꼴
+ */
+export function makePhoneIntl(
+  last4: string,
+  head: '-' | '' | '.' | ' ' = '-',
+  sep: '-' | '' | '.' | ' ' = head,
+  trunk: '' | '0' | '(0)' = '',
+): string {
+  return `+82${head}${trunk}10${sep}0000${sep}${last4}`;
+}
+
+/** 국제 표기 유선(합성): +82-<area>-0000-NNNN. area 는 '2'·'31'·'70' 등(앞자리 0 없음) */
+export function makeLandlineIntl(area: string, last4: string, sep: '-' | '.' | ' ' = '-'): string {
+  return `+82${sep}${area}${sep}0000${sep}${last4}`;
+}
+
 /** 계좌 번호(합성): 000-000-00NNNN */
 export function makeAccount(last4: string): string {
   return `000-000-00${last4}`;
@@ -110,6 +129,7 @@ export const SYN = {
   phone0000: makePhone('0000'),
   phonePlain: makePhone('3333', ''),
   landline: makeLandline('1234'),
+  phoneIntl: makePhoneIntl('1234'),
   // 계좌
   account: makeAccount('1234'),
   account2: makeAccount('5670'),
@@ -141,5 +161,7 @@ export function isSyntheticNumber(s: string): boolean {
   ]);
   if (fixed.has(s)) return true;
   // 국번 0000 전화는 끝 4자리가 무엇이든 합성
+  // 국제 표기: 검사기가 '+' 를 떼고 뽑으므로 82 접두·앞자리 0 생략 꼴(10…)의 국번 0000 휴대, 02 유선까지만 허용
+  if (/^82[-. ]?10([-. ]?)0000\1\d{4}$/.test(s) || /^10([-. ]?)0000\1\d{4}$/.test(s) || /^82[-. ]?2([-. ])0000\1\d{4}$/.test(s)) return true;
   return /^010([-. ]?)0000\1\d{4}$/.test(s) || /^02([-. ])0000\1\d{4}$/.test(s) || /^000-000-00\d{4}$/.test(s);
 }

@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { createVault, detect, detectors, KoPiiError, pseudonymize, restore, UnknownDetectorError, type Detector } from '../src/index';
-import { NAMES, SYN } from './fixtures/synthetic';
+import { makeLandlineIntl, makePhone, makePhoneIntl, NAMES, SYN } from './fixtures/synthetic';
 
 interface Positive {
   text: string;
@@ -38,6 +38,21 @@ const POSITIVES: Positive[] = [
   { text: `연락처 ${SYN.phone1234}로`, kind: 'phone', value: SYN.phone1234, confidence: 'format' },
   { text: `휴대폰${SYN.phonePlain}`, kind: 'phone', value: SYN.phonePlain, confidence: 'format' },
   { text: `대표번호 ${SYN.landline}`, kind: 'phone', value: SYN.landline, confidence: 'format' },
+  // 전화: +82 국제 표기(span 은 '+82' 접두 포함 전체)
+  { text: `${makePhoneIntl('1234')} 로 연락`, kind: 'phone', value: makePhoneIntl('1234'), confidence: 'format' },
+  { text: makePhoneIntl('1234', ' ', '-'), kind: 'phone', value: makePhoneIntl('1234', ' ', '-'), confidence: 'format' },
+  { text: makePhoneIntl('1234', ' '), kind: 'phone', value: makePhoneIntl('1234', ' '), confidence: 'format' },
+  { text: makePhoneIntl('1234', '.'), kind: 'phone', value: makePhoneIntl('1234', '.'), confidence: 'format' },
+  { text: makePhoneIntl('1234', ''), kind: 'phone', value: makePhoneIntl('1234', ''), confidence: 'format' },
+  { text: makePhoneIntl('1234', ' ', ''), kind: 'phone', value: makePhoneIntl('1234', ' ', ''), confidence: 'format' },
+  { text: makePhoneIntl('1234', '', '-'), kind: 'phone', value: makePhoneIntl('1234', '', '-'), confidence: 'format' },
+  { text: makePhoneIntl('1234', ' ', '-', '(0)'), kind: 'phone', value: makePhoneIntl('1234', ' ', '-', '(0)'), confidence: 'format' },
+  { text: makePhoneIntl('1234', '-', '-', '(0)'), kind: 'phone', value: makePhoneIntl('1234', '-', '-', '(0)'), confidence: 'format' },
+  { text: makePhoneIntl('1234', ' ', '-', '0'), kind: 'phone', value: makePhoneIntl('1234', ' ', '-', '0'), confidence: 'format' },
+  { text: makeLandlineIntl('2', '1234'), kind: 'phone', value: makeLandlineIntl('2', '1234'), confidence: 'format' },
+  { text: makeLandlineIntl('2', '1234', ' '), kind: 'phone', value: makeLandlineIntl('2', '1234', ' '), confidence: 'format' },
+  { text: makeLandlineIntl('31', '1234'), kind: 'phone', value: makeLandlineIntl('31', '1234'), confidence: 'format' },
+  { text: makeLandlineIntl('70', '1234'), kind: 'phone', value: makeLandlineIntl('70', '1234'), confidence: 'format' },
   // 계좌: 은행명 문맥
   { text: `국민은행 ${SYN.account}로 입금`, kind: 'account', value: SYN.account, confidence: 'context' },
   { text: `카카오뱅크 계좌 ${SYN.account2}`, kind: 'account', value: SYN.account2, confidence: 'context' },
@@ -74,6 +89,16 @@ const NEGATIVES: string[] = [
   '박사님께 여쭤보세요. 상무님께 전달, 하사님과 공사님, 도사님, 정비사님, 지사장님, 손님님.', // 직함+님 (Q-2)
   '김치찌개와 이번주 전화 주세요. 장소 변경 안내.',
   '버전 7.0.166, 2026-11-10 기준, 시각 12:30',
+  // 국제 표기 오탐 금지: 다른 국가 코드, '+82,…' 금액, 끝자리 초과, '+' 없는 82-…
+  // (번호 모양 글자를 파일에 그대로 두지 않으려고 조립한다 — hygiene 검사 대상)
+  ['+1', '202', '555', '0100'].join('-'),
+  ['+81', '90', '0000', '1234'].join('-'),
+  ['+86', '138', '0000', '1234'].join(' '),
+  '금액 +82,100,001,234원',
+  `주문번호 ${['82', '10', '0000', '1234', '5'].join('-')}`,
+  `${makePhoneIntl('1234')}5`,
+  `${makePhoneIntl('1234', ' ')}6`,
+  ['+82', '10', '0000', '1234'].join('') + '-5',
 ];
 
 // 이름 탐지 표(Q-6). 이름이 빠지면 모델로 그대로 나가므로(유출) 양성 표를 넉넉히 둔다.
@@ -226,6 +251,36 @@ describe('AC-1 한국형 식별번호 탐지', () => {
 
   it.each(NEGATIVES)('음성: %s', (text) => {
     expect(detect(text)).toEqual([]);
+  });
+
+  it("'+82 010-…' 는 '+82 ' 를 남기지 않고 통째로 가명이 된다", () => {
+    const text = `연락처 +82 ${makePhone('1234')} 입니다`;
+    const found = detect(text);
+    expect(found.map((d) => d.value)).toEqual([`+82 ${makePhone('1234')}`]);
+    const vault = createVault();
+    const sent = pseudonymize(text, vault);
+    expect(sent).toBe('연락처 [전화_1] 입니다');
+    expect(sent).not.toContain('+82');
+  });
+
+  it.each([
+    makePhoneIntl('1234'),
+    makePhoneIntl('1234', ' ', '-', '(0)'),
+    makePhoneIntl('1234', ''),
+    makeLandlineIntl('31', '1234'),
+    `+82 ${makePhone('1234')}`,
+  ])('국제 표기 왕복: %s', (num) => {
+    const text = `${num} 로 연락`;
+    const vault = createVault();
+    const sent = pseudonymize(text, vault);
+    expect(sent).toBe('[전화_1] 로 연락');
+    expect(restore(sent, vault)).toBe(text);
+  });
+
+  it('국내 표기 회귀: 국제 표기 규칙이 국내 span 을 바꾸지 않는다', () => {
+    for (const v of [makePhone('1234'), makePhone('1234', ''), makePhone('1234', ' '), makePhone('1234', '.'), SYN.landline]) {
+      expect(detect(v).map((d) => [d.kind, d.value])).toEqual([['phone', v]]);
+    }
   });
 
   it('양성 세트는 kind 8종을 모두 덮는다', () => {
