@@ -1,7 +1,7 @@
 // AC-1: 한국형 식별번호 탐지 — 합성 양성 세트는 전부 맞는 kind·신뢰도로, 음성 세트는 0건.
 
 import { describe, expect, it } from 'vitest';
-import { createVault, detect, detectors, KoPiiError, pseudonymize, UnknownDetectorError, type Detector } from '../src/index';
+import { createVault, detect, detectors, KoPiiError, pseudonymize, restore, UnknownDetectorError, type Detector } from '../src/index';
 import { NAMES, SYN } from './fixtures/synthetic';
 
 interface Positive {
@@ -97,6 +97,20 @@ const NAME_POSITIVES: Array<[text: string, names: string[]]> = [
   ['담당자 지사랑님 확인', ['지사랑']],
   ['이상국님 문의', ['이상국']],
   ['남궁지원님 접수', ['남궁지원']],
+  // 'label명:' 꼴 표제(콜론 필수): 문맥 낱말 + 명
+  ['고객명: 홍길동', ['홍길동']],
+  ['환자명: 홍길동', ['홍길동']],
+  ['고객명：홍길동', ['홍길동']],
+  ['회원명: 홍길동', ['홍길동']],
+  [`고객명: 홍길동, 연락처: ${SYN.phone1234}`, ['홍길동']],
+  // 기존 표제는 그대로
+  ['고객: 홍길동', ['홍길동']],
+  ['성명: 홍길동', ['홍길동']],
+  ['이름: 홍길동', ['홍길동']],
+  ['성함: 홍길동', ['홍길동']],
+  ['예금주: 홍길동', ['홍길동']],
+  ['고객 홍길동님', ['홍길동']],
+  ['환자명 : 김가명님 내원', ['김가명']],
   // 콜론 붙은 표제 뒤 값은 이름이다(조사로 읽지 않는다)
   ['성명：하사랑', ['하사랑']],
   ['이름: 지사랑', ['지사랑']],
@@ -152,6 +166,16 @@ const NAME_NEGATIVES: string[] = [
   '공지를 확인하세요',
   '예금주 고객님께 안내', // 문맥 낱말 자체(예금주)는 이름이 아니다
   '고객 안내장 발송',
+  // 표제 없는 이름, 콜론 없는 '명' 표제(범위 밖), 일반 낱말
+  '표제 없이 홍길동이 왔다',
+  '고객명: 정보 없음',
+  '고객명: 미상',
+  '환자명: 확인 중',
+  '고객명 변경 요청',
+  '고객명단을 정리했다',
+  '환자명부 정리',
+  '고객명 홍길동',
+  '환자명은 홍길동입니다',
   '고객사 담당자님께 전달',
 ];
 
@@ -164,6 +188,23 @@ describe('AC-1 이름 탐지 표(유출 회귀 방지)', () => {
 
   it.each(NAME_NEGATIVES)('음성: %s', (text) => {
     expect(detect(text, { detectors: ['name'] })).toEqual([]);
+  });
+
+  it("'label명:' 표제 뒤 이름은 치환되고 restore 로 원문과 정확히 돌아온다", () => {
+    const cases: Array<[string, string]> = [
+      ['고객명: 홍길동', '고객명: [이름_1]'],
+      ['환자명: 홍길동', '환자명: [이름_1]'],
+      ['고객명：홍길동', '고객명：[이름_1]'],
+      ['회원명: 홍길동', '회원명: [이름_1]'],
+      [`고객명: 홍길동, 연락처: ${SYN.phone1234}`, '고객명: [이름_1], 연락처: [전화_1]'],
+      ['환자명 : 김가명님 내원', '환자명 : [이름_1]님 내원'],
+    ];
+    for (const [text, expected] of cases) {
+      const vault = createVault();
+      const out = pseudonymize(text, vault);
+      expect(out).toBe(expected);
+      expect(restore(out, vault)).toBe(text);
+    }
   });
 
   it('양성 이름은 pseudonymize 뒤 모델에 보낼 글에 남지 않는다', () => {
