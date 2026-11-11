@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.2 (2026-11-11)
+
+- Fix: names after `label명:` headings such as `고객명:` / `환자명:` (also with a full-width colon) are now pseudonymized instead of leaking to the model. A heading counts when it ends in `명`, the part before `명` is a known context word, and a colon follows. `고객명 홍길동` (no colon) is still not detected; use the `names` dictionary for that.
+
 ## 0.1.1 (2026-11-11)
 
 - Fix: the consumer test harness now works with the npm 10 bundled in Node 22. `npm pack` runs the `prepare` build there, so the harness no longer fails to parse `test/consumers/run.mjs`. Test-only change; the library code is unchanged.
