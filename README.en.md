@@ -353,9 +353,8 @@ This demo is a **practice mock, not a real LLM**. The mock model quotes placehol
 - To reduce false positives, **names without context are missed.** Put names you want caught without context into the dictionary. The shape differs per call: for the core `detect(text, { names: [...] })` and `pseudonymize(text, vault, { names: [...] })`, `names` goes directly in the options; the AI SDK and openai adapters wrap it one level deeper as `detect: { names: [...] }`.
 - Names that can also read as a common word + particle (박사랑 = 박사 + 랑, 이상은 = 이상 + 은) are caught only when `님` or `씨` follows, or when they come after a colon heading such as `성명:`. `고객 박사랑`, `성명 박사랑` (no colon) and `하사랑 고객님` (spaced honorific) are missed, so put such names in the `names` dictionary. The order of judgment is "a bare title alone is excluded; an attached honorific or colon heading takes priority over the word reading". `고객명 홍길동` (a …명 heading without a colon) is missed, so use a colon as in `고객명: 홍길동` or put the name in the `names` dictionary.
 
-**Not supported (0.1.3)**
+**Not supported (0.2.0)**
 - Phone numbers: country codes without `+` (`0082-…`, `82-…`), country codes in parentheses (`(+82) …`), forms mixing separators after the area code (such as `+82-10␣0000-1234`, where only some hyphens of `+82-10-0000-1234` are replaced by spaces), nationwide representative numbers (15xx, 16xx, 18xx), and other countries' numbers are not detected.
-- Unknown option keys (typos and the like) are silently ignored. Check option names carefully (rejecting them is planned for a later version).
 - A word after a name heading is treated as a name and replaced (the `고객님` in `성명: 고객님` and `고객명: 고객님` is also replaced). Only whitespace and colons (`:`, `：`) are recognized as separators, the full-width space (U+3000) is not, and `이상은 씨` (spaced `씨`) is missed.
 - When the model alters a placeholder (`[이름 1]`, `이름_1`, `[Name_1]`), **only exactly matching placeholders** are restored.
 - Particle correction covers only 6 pairs (은/는, 이/가, 을/를, 과/와, 으로/로, 이랑/랑). `이에요/예요`, `이라/라`, `으로서` and the copula `이다` are left as they are.
@@ -385,7 +384,7 @@ This demo is a **practice mock, not a real LLM**. The mock model quotes placehol
 | `createNameDetector(names?)` | Creates a name detector with a user dictionary | Array of names | `Detector` |
 | `detectors` | The 8 default detector objects | — | `Record<PiiKind, Detector>` |
 | `DEFAULT_LABELS` | Default label table | — | `Record<PiiKind, string>` |
-| `KoPiiError`, `UnknownDetectorError` | Usage error / unknown detector name | — | Exception classes |
+| `KoPiiError`, `UnknownDetectorError`, `UnknownOptionError` | Usage error / unknown detector name / unknown option key | — | Exception classes |
 
 Public functions check their arguments first and, if invalid, throw a single `KoPiiError` (the message includes how to fix it). `piiMiddleware` and `wrapOpenAI` check at creation; `detect`, `pseudonymize`, `restore` and `push` check at call time. Actual output (for `piiMiddleware({})`, `detect(null)`, `restore(null, vault)` and `createStreamRestorer(vault).push(undefined)` respectively):
 
@@ -394,6 +393,12 @@ KoPiiError: piiMiddleware({ vault }) needs a vault, got undefined. Create one wi
 KoPiiError: detect(text) must be a string, got null. Convert it first, e.g. String(value) or value ?? ''.
 KoPiiError: restore(text, vault) must be a string, got null. Convert it first, e.g. String(value) or value ?? ''.
 KoPiiError: StreamRestorer.push(delta) must be a string, got undefined. Convert it first, e.g. String(value) or value ?? ''.
+```
+
+`detect`, `pseudonymize`, `createVault`, `piiMiddleware` and `wrapOpenAI` no longer silently ignore unknown option keys (a typo, or `names` passed at the top level of an adapter). They throw `UnknownOptionError` (a `KoPiiError` subclass with `option` and `allowed` properties) and suggest a close key. The message contains key names only, never option values such as a name dictionary. If you spread a shared config object (`...config`), pick only the keys you need. Actual output of `pseudonymize('x', createVault(), { name: ['a'] })`:
+
+```
+pseudonymize(text, vault, options) got an unknown option 'name'. Allowed: detectors, names. Did you mean 'names'?
 ```
 
 `Vault`: `tokenFor(kind, value, label?)`, `original(token)`, `size`, `tokens()`, `toJSON()`. Only vaults made with `createVault()` are accepted; implementing an object of the same shape yourself, or passing a copy such as `{ ...createVault() }`, raises `KoPiiError` (because a fake vault that returns original values would leak them straight to the model). A custom detector has the form `{ kind, label, find(text): Detection[] }`.
@@ -448,6 +453,7 @@ npx vitest run test/stream.property.test.ts --silent=false
 | In TypeScript, `Cannot find module 'ko-pii-roundtrip/ai-sdk'` | `moduleResolution` is `node` (the old mode) and cannot read `exports` | In `tsconfig.json`, change to `"module": "nodenext"` (or `"moduleResolution": "bundler"`) |
 | Particles are off on screen, as in `이예시은` | Turned off with `josa: false`, or the value ends in a symbol so the final consonant cannot be judged | Keep the `josa` option on (the default), and keep in mind that for values that cannot be judged the model's particle stays |
 | `[이름_1]` is not restored and appears as is in the answer | The model altered the placeholder to `[이름 1]` or `[Name_1]`, or a different vault is used | It must match exactly to be restored (current limit). Pass the same vault for the same conversation |
+| `UnknownOptionError: ... got an unknown option 'name'. Allowed: detectors, names. Did you mean 'names'?` | An option key is misspelled, not supported by that function, or a shared config object was spread in (for example `names` at the top level of an adapter) | Use the key the message suggests, or pass only the allowed keys; for adapters put the dictionary in `detect: { names: [...] }` (see the error examples in the API section) |
 | A `KoPiiError` appears, such as `KoPiiError: piiMiddleware({ vault }) needs a vault, got undefined` | A required argument (vault) was not passed, or a non-string (`null`, `undefined`) was passed to `detect`, `restore` or `push` | Pass `{ vault: createVault() }` as the message says, or convert to a string with `String(value)` or `value ?? ''` (see the error examples in the API section) |
 | A name is not replaced | Names without an honorific or context are not detected | Add it to the dictionary with `detect: { names: ['박샘플'] }`, or send it with `님` or a title attached |
 | The last few characters do not appear at the end of the stream | You use `createStreamRestorer` directly and did not call `flush()` | Call `flush()` once when the stream ends |
@@ -463,7 +469,7 @@ npx vitest run test/stream.property.test.ts --silent=false
 
 ```bash
 npm install         # building (tsdown) needs Node 22.18 or later (.nvmrc)
-npm test            # build + type check + tests (308)
+npm test            # build + type check + tests (314)
 npm run example     # practice mock demo
 npm run test:consumers   # install the build output into temporary projects (ESM and CJS) and check it
 ```

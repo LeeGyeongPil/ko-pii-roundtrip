@@ -347,9 +347,8 @@ LEAK_TOTAL 0
 - 오탐을 줄이려 **이름은 문맥이 없으면 놓칩니다.** 문맥 없이도 잡고 싶은 이름은 사전에 넣으세요. 넣는 모양이 호출마다 다릅니다: 코어 `detect(text, { names: [...] })`·`pseudonymize(text, vault, { names: [...] })` 는 옵션에 바로 `names`, AI SDK·openai 어댑터는 `detect: { names: [...] }` 로 한 겹 감쌉니다.
 - 흔한 낱말 + 조사로도 읽히는 이름(박사랑 = 박사+랑, 이상은 = 이상+은)은 뒤에 `님`·`씨`가 붙었거나 `성명:` 처럼 콜론 붙은 표제 뒤에 있을 때만 잡습니다. `고객 박사랑`, `성명 박사랑`(콜론 없음), `하사랑 고객님`(띄어 쓴 호칭)은 놓치니 이런 이름은 `names` 사전에 넣으세요. 판정 순서는 "직함 단독은 제외, 붙인 호칭·콜론 표제가 낱말 읽기보다 우선"입니다. `고객명 홍길동`(콜론 없는 …명 표제)은 놓치니 `고객명: 홍길동` 처럼 콜론을 쓰거나 `names` 사전에 넣으세요.
 
-**지원하지 않는 것(0.1.3)**
+**지원하지 않는 것(0.2.0)**
 - 전화번호: `+` 없는 국가 코드(`0082-…`·`82-…`), 괄호로 감싼 국가 코드(`(+82) …`), 국번 뒤 구간 구분자가 섞인 꼴(`+82-10-0000-1234` 의 하이픈 일부만 공백으로 바꾼 `+82-10␣0000-1234` 류), 전국 대표번호(15xx·16xx·18xx), 다른 국가 번호는 탐지하지 않습니다.
-- 알 수 없는 옵션 키(오타 등)는 오류 없이 무시됩니다. 옵션 이름을 정확히 확인하세요(이후 버전에서 거부하도록 개선 예정).
 - 이름 표제 뒤 낱말은 이름으로 보고 바꿉니다(`성명: 고객님`·`고객명: 고객님` 의 `고객님` 도 치환). 구분자는 공백·콜론(`:`·`：`)만 인식하고 전각 공백(U+3000)은 인식하지 않으며, `이상은 씨`(띄어 쓴 `씨`)는 놓칩니다.
 - 모델이 가명을 변형한 경우(`[이름 1]`, `이름_1`, `[Name_1]`) — **정확히 일치하는 가명만** 복원합니다.
 - 조사 교정은 6쌍(은/는·이/가·을/를·과/와·으로/로·이랑/랑)뿐입니다. `이에요/예요`, `이라/라`, `으로서` 와 서술격 `이다` 는 그대로 둡니다.
@@ -379,7 +378,7 @@ LEAK_TOTAL 0
 | `createNameDetector(names?)` | 사용자 사전을 넣은 이름 탐지기를 만든다 | 이름 배열 | `Detector` |
 | `detectors` | 기본 탐지기 8종 객체 | — | `Record<PiiKind, Detector>` |
 | `DEFAULT_LABELS` | 기본 라벨 표 | — | `Record<PiiKind, string>` |
-| `KoPiiError`, `UnknownDetectorError` | 사용 오류 / 알 수 없는 탐지기 이름 | — | 예외 클래스 |
+| `KoPiiError`, `UnknownDetectorError`, `UnknownOptionError` | 사용 오류 / 알 수 없는 탐지기 이름 / 알 수 없는 옵션 키 | — | 예외 클래스 |
 
 공개 함수는 인자를 먼저 검사하고, 잘못되면 `KoPiiError`(메시지에 고칠 방법 포함) 하나로 던집니다. `piiMiddleware`·`wrapOpenAI` 는 만들 때, `detect`·`pseudonymize`·`restore`·`push` 는 호출할 때 검사합니다. 실제 실행 결과(각각 `piiMiddleware({})`, `detect(null)`, `restore(null, vault)`, `createStreamRestorer(vault).push(undefined)`):
 
@@ -388,6 +387,12 @@ KoPiiError: piiMiddleware({ vault }) needs a vault, got undefined. Create one wi
 KoPiiError: detect(text) must be a string, got null. Convert it first, e.g. String(value) or value ?? ''.
 KoPiiError: restore(text, vault) must be a string, got null. Convert it first, e.g. String(value) or value ?? ''.
 KoPiiError: StreamRestorer.push(delta) must be a string, got undefined. Convert it first, e.g. String(value) or value ?? ''.
+```
+
+`detect`·`pseudonymize`·`createVault`·`piiMiddleware`·`wrapOpenAI` 는 알 수 없는 옵션 키(오타, 어댑터 최상위에 넘긴 `names` 등)를 조용히 무시하지 않고 `UnknownOptionError`(`KoPiiError` 하위, `option`·`allowed` 속성)로 거부하며 비슷한 키를 제안합니다. 메시지에는 키 이름만 들어가고 옵션 값(이름 사전 등)은 들어가지 않습니다. 공용 설정 객체를 `...config` 로 펼쳐 넘기던 코드는 필요한 키만 골라 넘기세요. 실제 실행 결과(`pseudonymize('x', createVault(), { name: ['a'] })`):
+
+```
+pseudonymize(text, vault, options) got an unknown option 'name'. Allowed: detectors, names. Did you mean 'names'?
 ```
 
 `Vault`: `tokenFor(kind, value, label?)`, `original(token)`, `size`, `tokens()`, `toJSON()`. `createVault()` 로 만든 것만 받습니다 — 같은 모양의 객체를 직접 구현하거나 `{ ...createVault() }` 로 복사해 넘기면 `KoPiiError` 가 납니다(가짜 vault 가 원래 값을 돌려주면 그대로 모델로 새기 때문). 사용자 정의 탐지기는 `{ kind, label, find(text): Detection[] }` 꼴입니다.
@@ -442,6 +447,7 @@ npx vitest run test/stream.property.test.ts --silent=false
 | TypeScript 에서 `Cannot find module 'ko-pii-roundtrip/ai-sdk'` | `moduleResolution` 이 `node`(구 방식)라 `exports` 를 못 읽음 | `tsconfig.json` 에서 `"module": "nodenext"`(또는 `"moduleResolution": "bundler"`)로 바꾼다 |
 | 화면에 `이예시은`처럼 조사가 어긋남 | `josa: false` 로 껐거나, 값이 기호로 끝나 받침을 판정할 수 없음 | `josa` 옵션을 켜 두고(기본), 판정 불가 값은 모델의 조사가 그대로 남는다는 점을 감안한다 |
 | 답에 `[이름_1]` 이 복원되지 않고 그대로 나옴 | 모델이 가명을 `[이름 1]`·`[Name_1]` 로 변형했거나, 다른 vault 를 씀 | 정확히 일치해야 복원된다(현재 한계). 같은 대화에는 같은 vault 를 넘긴다 |
+| `UnknownOptionError: ... got an unknown option 'name'. Allowed: detectors, names. Did you mean 'names'?` | 옵션 키 오타이거나 그 함수가 지원하지 않는 키, 또는 공용 설정 객체를 펼쳐 넘김(예: 어댑터 최상위에 `names`) | 메시지가 제안하는 키를 쓰거나 허용된 키만 넘긴다. 어댑터는 `detect: { names: [...] }` 안에 넣는다(API 절의 오류 예시 참고) |
 | `KoPiiError: piiMiddleware({ vault }) needs a vault, got undefined` 처럼 `KoPiiError` 가 남 | 필수 인자(vault)를 안 넘겼거나, `detect`·`restore`·`push` 에 문자열이 아닌 값(`null`·`undefined`)을 넘김 | 메시지가 알려 주는 대로 `{ vault: createVault() }` 를 넘기거나 `String(value)`·`value ?? ''` 로 문자열로 바꿔 넘긴다(API 절의 오류 예시 참고) |
 | 이름이 가명으로 안 바뀜 | 호칭·문맥 없는 이름은 탐지하지 않음 | `detect: { names: ['박샘플'] }` 로 사전에 넣거나 `님`·직함을 붙여 보낸다 |
 | 스트림 끝에서 마지막 몇 글자가 안 나옴 | 직접 `createStreamRestorer` 를 쓰면서 `flush()` 를 안 부름 | 스트림이 끝나면 `flush()` 한 번 호출 |
@@ -457,7 +463,7 @@ npx vitest run test/stream.property.test.ts --silent=false
 
 ```bash
 npm install         # 빌드(tsdown)에 Node 22.18 이상 필요(.nvmrc)
-npm test            # 빌드 + 타입 검사 + 테스트(308개)
+npm test            # 빌드 + 타입 검사 + 테스트(314개)
 npm run example     # 연습용 목 데모
 npm run test:consumers   # 빌드 결과를 임시 프로젝트(ESM·CJS)에 설치해 확인
 ```

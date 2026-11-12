@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0 (2026-11-12)
+
+- Breaking (0.x): `detect`, `pseudonymize`, `createVault`, `piiMiddleware` and `wrapOpenAI` now reject unknown option keys with the new `UnknownOptionError` (a `KoPiiError` subclass, exported, with `option` and `allowed` properties) instead of silently ignoring them. Before, `pseudonymize(text, vault, { name: [...] })` or `piiMiddleware({ vault, names: [...] })` ran without error and sent the original name to the model. The message names the key, lists the allowed keys and suggests a fix (`Did you mean 'names'?`, or `detect: { names }` for adapters); it never includes option values. `piiMiddleware` and `wrapOpenAI` check at creation, including the nested `detect` options.
+- Migration: if you spread a shared config object into these calls, pass only the keys the function accepts. `restore` and the stream restorers are unchanged.
+- Test-only: the consumer test allows `README.en.md` in the tarball (npm 11 includes README variants).
+
 ## 0.1.3 (2026-11-11)
 
 - Fix: `+82` international phone numbers are now pseudonymized instead of leaking to the model. Mobile and landline forms are covered, with the country code as part of the matched span: separators after `+82` may be `-`, `.`, a space or nothing, an optional `(0)` or `0` trunk digit is accepted, and the number part follows the same rules as the domestic forms. `+82 010-…` used to leave `+82 ` in the text and now matches as a whole. Other country codes, `+82,…` amounts and numbers with extra trailing digits are still not detected. Out of scope (documented in the README): `0082-…`/`82-…` without `+`, `(+82) …`, mixed separators after the area part (a `+82-10-0000-1234` with only some hyphens replaced by spaces), 15xx/16xx/18xx numbers.
