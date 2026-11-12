@@ -12,10 +12,10 @@
 import { KoPiiError } from './errors';
 import { createJsonStringRestorer, restoreJsonText } from './json-stream';
 import { pseudonymize } from './pseudonymize';
-import { assertOptions, assertVault } from './validate';
+import { assertDetectOptions, assertKnownKeys, assertOptions, assertVault } from './validate';
 import { restore } from './restore';
 import { createStreamRestorer } from './stream';
-import type { DetectOptions, StreamRestorer, Vault } from './types';
+import { optionKeys, type DetectOptions, type StreamRestorer, type Vault } from './types';
 import { mapJsonText } from './walk';
 
 /** 감쌀 수 있는 클라이언트의 최소 모양 */
@@ -30,6 +30,9 @@ export interface WrapOpenAIOptions {
   /** 복원할 때 조사도 고칠지. 기본 true */
   josa?: boolean;
 }
+
+/** Keys accepted by wrapOpenAI() (kept in sync with WrapOpenAIOptions by the type check). */
+const WRAP_OPTION_KEYS = optionKeys<WrapOpenAIOptions>({ vault: true, detect: true, josa: true });
 
 // ---- openai 응답·요청의 필요한 부분만 느슨하게 적은 모양 ----
 type Obj = Record<string, unknown>;
@@ -63,6 +66,12 @@ function forward(target: object, prop: string | symbol): unknown {
 
 export function wrapOpenAI<T extends OpenAILike>(client: T, opts: WrapOpenAIOptions): T {
   assertOptions(opts, 'wrapOpenAI(client, options)', 'wrapOpenAI(new OpenAI(), { vault: createVault() })');
+  assertKnownKeys(opts, WRAP_OPTION_KEYS, 'wrapOpenAI(client, options)', (key) =>
+    key === 'names' || key === 'detectors'
+      ? `Put it under detect, e.g. wrapOpenAI(client, { vault, detect: { ${key}: [...] } }).`
+      : undefined,
+  );
+  assertDetectOptions(opts.detect, 'wrapOpenAI(client, { detect })');
   assertVault(opts.vault, 'wrapOpenAI(client, { vault })');
   const createFn = (client as { chat?: { completions?: { create?: unknown } } } | null | undefined)?.chat?.completions?.create;
   if (typeof createFn !== 'function') {

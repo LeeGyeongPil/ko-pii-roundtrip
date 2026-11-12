@@ -1,7 +1,7 @@
 // 탐지기 실행과 겹침 해소.
 
 import { UnknownDetectorError } from '../errors';
-import { assertText } from '../validate';
+import { assertDetectOptions, assertText } from '../validate';
 import type { Confidence, DetectOptions, Detection, Detector, PiiKind } from '../types';
 import { accountDetector } from './account';
 import { brnDetector } from './brn';
@@ -81,6 +81,7 @@ export function detectRaw(text: string, opts: DetectOptions = {}): LabeledDetect
  */
 export function detect(text: string, opts: DetectOptions = {}): Detection[] {
   assertText(text, 'detect(text)');
+  assertDetectOptions(opts, 'detect(text, options)');
   return resolveOverlaps(detectRaw(text, opts)).map(({ kind, value, start, end, confidence }) => ({
     kind,
     value,

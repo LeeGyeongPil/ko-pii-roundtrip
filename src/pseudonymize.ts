@@ -2,7 +2,7 @@
 
 import { detectRaw, resolveOverlaps, type LabeledDetection } from './detect/index';
 import type { DetectOptions, Vault } from './types';
-import { assertText, assertVault } from './validate';
+import { assertDetectOptions, assertText, assertVault } from './validate';
 import { vaultInternal } from './vault';
 
 /** text 안에 이미 들어 있는 가명 자리(다시 탐지하거나 바꾸지 않는다) */
@@ -45,6 +45,7 @@ function knownValueHits(text: string, vault: Vault): LabeledDetection[] {
 export function pseudonymize(text: string, vault: Vault, opts: DetectOptions = {}): string {
   assertText(text, 'pseudonymize(text, vault)');
   assertVault(vault, 'pseudonymize(text, vault)');
+  assertDetectOptions(opts, 'pseudonymize(text, vault, options)');
   const protectedSpans = existingTokenSpans(text, vault);
   // 1) 다음 턴: 화면에 복원돼 있던 값(이전 답)은 문맥이 없어도 같은 가명으로 되돌린다
   const known = resolveOverlaps(knownValueHits(text, vault), protectedSpans);

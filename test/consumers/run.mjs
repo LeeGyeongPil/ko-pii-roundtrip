@@ -107,7 +107,7 @@ try {
   const files = packed[0].files.map((f) => f.path);
   console.log(`PACK ${packed[0].filename} files=${files.length}`);
   for (const f of files) {
-    if (!/^(dist\/|package\.json$|README\.md$|LICENSE$|CHANGELOG\.md$)/.test(f)) throw new Error(`tarball 에 예상 밖 파일: ${f}`);
+    if (!/^(dist\/|package\.json$|README(\.en)?\.md$|LICENSE$|CHANGELOG\.md$)/.test(f)) throw new Error(`tarball 에 예상 밖 파일: ${f}`);
   }
 
   // 2~3) 실행 검사

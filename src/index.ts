@@ -9,7 +9,7 @@ export { restore } from './restore';
 export { createStreamRestorer } from './stream';
 export { createJsonStringRestorer, restoreJsonText } from './json-stream';
 export { hasBatchim, attachJosa, pickJosa } from './josa';
-export { KoPiiError, UnknownDetectorError } from './errors';
+export { KoPiiError, UnknownDetectorError, UnknownOptionError } from './errors';
 export type {
   Confidence,
   DetectOptions,

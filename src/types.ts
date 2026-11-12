@@ -36,6 +36,17 @@ export interface DetectOptions {
   names?: string[];
 }
 
+/**
+ * Build the runtime list of option keys from a record that must name every key of T exactly once.
+ * Adding a key to the interface makes the record fail to type-check until the key is added here too.
+ */
+export function optionKeys<T>(record: Record<keyof T, true>): readonly string[] {
+  return Object.keys(record);
+}
+
+/** Keys accepted by detect() / pseudonymize() (kept in sync with DetectOptions by the type check). */
+export const DETECT_OPTION_KEYS: readonly string[] = optionKeys<DetectOptions>({ detectors: true, names: true });
+
 /** 값 ↔ 가명 표. createVault() 로만 만든다(직접 구현한 객체는 KoPiiError) */
 export interface Vault {
   /** 값의 가명을 돌려준다. 처음 보는 값이면 라벨별 다음 번호로 새로 만든다 */

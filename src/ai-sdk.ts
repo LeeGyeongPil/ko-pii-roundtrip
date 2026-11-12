@@ -16,7 +16,8 @@ import { pseudonymize } from './pseudonymize';
 import { restore } from './restore';
 import { createStreamRestorer } from './stream';
 import type { DetectOptions, StreamRestorer, Vault } from './types';
-import { assertOptions, assertVault } from './validate';
+import { assertDetectOptions, assertKnownKeys, assertOptions, assertVault } from './validate';
+import { optionKeys } from './types';
 import { mapStrings } from './walk';
 
 // ---- ai 의 미들웨어 타입에서 필요한 타입을 꺼낸다 ----
@@ -41,11 +42,20 @@ export interface PiiMiddlewareOptions {
   josa?: boolean;
 }
 
+/** Keys accepted by piiMiddleware() (kept in sync with PiiMiddlewareOptions by the type check). */
+const MIDDLEWARE_OPTION_KEYS = optionKeys<PiiMiddlewareOptions>({ vault: true, detect: true, restoreReasoning: true, josa: true });
+
 /** piiMiddleware 가 돌려주는 객체. ai 의 LanguageModelMiddleware 에 그대로 넣을 수 있다 */
 export type PiiMiddleware = LanguageModelMiddleware & { readonly specificationVersion: 'v4' };
 
 export function piiMiddleware(opts: PiiMiddlewareOptions): PiiMiddleware {
   assertOptions(opts, 'piiMiddleware(options)', 'piiMiddleware({ vault: createVault() })');
+  assertKnownKeys(opts, MIDDLEWARE_OPTION_KEYS, 'piiMiddleware(options)', (key) =>
+    key === 'names' || key === 'detectors'
+      ? `Put it under detect, e.g. piiMiddleware({ vault, detect: { ${key}: [...] } }).`
+      : undefined,
+  );
+  assertDetectOptions(opts.detect, 'piiMiddleware({ detect })');
   assertVault(opts.vault, 'piiMiddleware({ vault })');
   const { vault } = opts;
   const restoreReasoning = opts.restoreReasoning ?? true;

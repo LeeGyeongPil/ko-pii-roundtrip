@@ -1,7 +1,7 @@
 // Public entry points reject bad input with a KoPiiError that says how to fix the call (Q-1).
 
 import { describe, expect, it } from 'vitest';
-import { createStreamRestorer, createVault, detect, KoPiiError, pseudonymize, restore } from '../src/index';
+import { createStreamRestorer, createVault, detect, KoPiiError, pseudonymize, restore, UnknownOptionError } from '../src/index';
 import { piiMiddleware } from '../src/ai-sdk';
 import { wrapOpenAI } from '../src/openai';
 
@@ -78,5 +78,62 @@ describe('input validation', () => {
     expect(() => r.push(bad(null))).toThrow(/must be a string/);
     expect(r.push('')).toBe('');
     expect(r.push('안녕')).toBe('안녕');
+  });
+});
+
+describe('unknown option keys', () => {
+  const secret = '박샘플'; // synthetic name
+  const v = () => createVault();
+
+  it('pseudonymize and detect reject a misspelled key and suggest the right one', () => {
+    expect(() => pseudonymize(`${secret} 방문`, v(), bad({ name: [secret] }))).toThrow(UnknownOptionError);
+    expect(() => pseudonymize(`${secret} 방문`, v(), bad({ name: [secret] }))).toThrow(KoPiiError);
+    expect(() => detect('x', bad({ nmaes: [secret] }))).toThrow(/unknown option 'nmaes'. Allowed: detectors, names.*Did you mean 'names'/);
+    try {
+      detect('x', bad({ nmaes: [secret] }));
+    } catch (e) {
+      expect(e).toBeInstanceOf(KoPiiError);
+      expect((e as UnknownOptionError).option).toBe('nmaes');
+      expect((e as UnknownOptionError).allowed).toEqual(['detectors', 'names']);
+    }
+  });
+
+  it('adapters reject a top-level names at creation and point to detect', () => {
+    expect(() => piiMiddleware(bad({ vault: v(), names: [secret] }))).toThrow(/detect: \{ names/);
+    expect(() => wrapOpenAI(client, bad({ vault: v(), names: [secret] }))).toThrow(/detect: \{ names/);
+    expect(() => wrapOpenAI(client, bad({ vault: v(), names: [secret] }))).toThrow(UnknownOptionError);
+  });
+
+  it('nested detect options are checked at creation', () => {
+    expect(() => piiMiddleware(bad({ vault: v(), detect: { nmaes: [secret] } }))).toThrow(UnknownOptionError);
+    expect(() => wrapOpenAI(client, bad({ vault: v(), detect: { nmaes: [secret] } }))).toThrow(/Did you mean 'names'/);
+  });
+
+  it('createVault rejects label and suggests labels', () => {
+    expect(() => createVault(bad({ label: { name: 'X' } }))).toThrow(/Did you mean 'labels'/);
+  });
+
+  it('the message never contains option values', () => {
+    for (const call of [
+      () => pseudonymize('x', v(), bad({ name: [secret] })),
+      () => piiMiddleware(bad({ vault: v(), names: [secret] })),
+      () => wrapOpenAI(client, bad({ vault: v(), detect: { name: [secret] } })),
+    ]) {
+      expect(call).toThrow(UnknownOptionError);
+      try {
+        call();
+      } catch (e) {
+        expect((e as Error).message).not.toContain(secret);
+      }
+    }
+  });
+
+  it('calls using every allowed key still work', () => {
+    expect(() => detect('x', { detectors: ['email'], names: [secret] })).not.toThrow();
+    expect(() => pseudonymize('x', v(), { detectors: ['email'], names: [secret] })).not.toThrow();
+    expect(() => createVault({ labels: { name: '사람' } })).not.toThrow();
+    expect(() => piiMiddleware({ vault: v(), detect: { names: [secret] }, restoreReasoning: false, josa: false })).not.toThrow();
+    expect(() => wrapOpenAI(client, { vault: v(), detect: { names: [secret] }, josa: false })).not.toThrow();
+    expect(() => detect('x', undefined)).not.toThrow();
   });
 });

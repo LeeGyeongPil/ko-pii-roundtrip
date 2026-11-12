@@ -7,6 +7,18 @@ export class KoPiiError extends Error {
   }
 }
 
+/** An options object has a key the function does not know (a typo or a misplaced option). Carries the key name only, never its value. */
+export class UnknownOptionError extends KoPiiError {
+  readonly option: string;
+  readonly allowed: readonly string[];
+  constructor(message: string, option: string, allowed: readonly string[]) {
+    super(message);
+    this.name = 'UnknownOptionError';
+    this.option = option;
+    this.allowed = allowed;
+  }
+}
+
 /** detect 옵션에 모르는 탐지기 이름을 넣었을 때 */
 export class UnknownDetectorError extends KoPiiError {
   readonly detector: string;

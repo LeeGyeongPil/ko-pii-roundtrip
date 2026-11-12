@@ -1,7 +1,8 @@
 // Vault: 원래 값 ↔ 가명 표. 메모리에만 있고, 수명은 앱이 정하는 "대화 하나".
 
 import { KoPiiError } from './errors';
-import type { PiiKind, Vault } from './types';
+import { optionKeys, type PiiKind, type Vault } from './types';
+import { assertKnownKeys } from './validate';
 
 /** 기본 라벨. 가명은 `[라벨_번호]` 꼴이 된다 */
 export const DEFAULT_LABELS: Readonly<Record<PiiKind, string>> = {
@@ -18,6 +19,9 @@ export const DEFAULT_LABELS: Readonly<Record<PiiKind, string>> = {
 export interface VaultOptions {
   labels?: Partial<Record<PiiKind, string>>;
 }
+
+/** Keys accepted by createVault() (kept in sync with VaultOptions by the type check). */
+const VAULT_OPTION_KEYS = optionKeys<VaultOptions>({ labels: true });
 
 /** 라이브러리 내부(pseudonymize)만 쓰는 통로 */
 export interface VaultInternal {
@@ -37,6 +41,7 @@ function checkLabel(label: string): void {
 }
 
 export function createVault(opts: VaultOptions = {}): Vault {
+  assertKnownKeys(opts, VAULT_OPTION_KEYS, 'createVault(options)');
   const labels: Record<string, string> = { ...DEFAULT_LABELS, ...opts.labels };
   for (const label of Object.values(labels)) checkLabel(label);
 
