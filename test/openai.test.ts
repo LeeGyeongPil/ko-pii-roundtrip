@@ -202,4 +202,15 @@ describe('AC-6 openai 래퍼', () => {
     expect(n).toBe(3);
     expect(stream.controller.signal.aborted || cancelled).toBe(true);
   });
+
+  it('parse·stream·runTools 는 KoPiiError 로 거부하고 요청을 한 건도 보내지 않는다', () => {
+    const server = fakeServer(() => new Response('{}', { status: 200 }));
+    const ai = wrapOpenAI(client(server), { vault: createVault() });
+    const body = { model: 'mock', messages: [{ role: 'user' as const, content: USER_TEXT }] };
+    const c = ai.chat.completions;
+    expect(() => c.parse(body)).toThrow(KoPiiError);
+    expect(() => c.stream(body)).toThrow(/create\(\{ \.\.\., stream: true \}\)/);
+    expect(() => c.runTools({ ...body, tools: [] })).toThrow(KoPiiError);
+    expect(server.bodies).toHaveLength(0);
+  });
 });

@@ -236,8 +236,16 @@ export function wrapOpenAI<T extends OpenAILike>(client: T, opts: WrapOpenAIOpti
     return showCompletion(res);
   }
 
+  // parse·stream·runTools 는 SDK 안에서 감싸지 않은 원래 create 를 다시 부르므로 원문이 나간다. 호출을 거부한다.
+  const refuse = (name: string) => (): never => {
+    throw new KoPiiError(
+      `wrapOpenAI does not support chat.completions.${name}(): the SDK calls the unwrapped create() internally, so the original text would be sent. Use create({ ..., stream: true }) on the wrapped client instead.`,
+    );
+  };
+  const REFUSED = new Set<string | symbol>(['parse', 'stream', 'runTools']);
+
   const completionsProxy = new Proxy(completions, {
-    get: (target, prop) => (prop === 'create' ? create : forward(target, prop)),
+    get: (target, prop) => (prop === 'create' ? create : REFUSED.has(prop) ? refuse(String(prop)) : forward(target, prop)),
   });
   const chatProxy = new Proxy(client.chat, {
     get: (target, prop) => (prop === 'completions' ? completionsProxy : forward(target, prop)),
