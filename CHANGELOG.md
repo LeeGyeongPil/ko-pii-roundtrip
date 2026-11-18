@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1 (2026-11-18)
+
+- Fixed: on a client wrapped with `wrapOpenAI`, `chat.completions.parse()`, `.stream()` and `.runTools()` sent the original names and phone numbers to the server and did not restore the reply, because the SDK calls the unwrapped `create()` internally. They now throw `KoPiiError` (with a hint to use `create({ ..., stream: true })`) and send no request. `create` and the other methods are unchanged.
+
 ## 0.2.0 (2026-11-12)
 
 - Breaking (0.x): `detect`, `pseudonymize`, `createVault`, `piiMiddleware` and `wrapOpenAI` now reject unknown option keys with the new `UnknownOptionError` (a `KoPiiError` subclass, exported, with `option` and `allowed` properties) instead of silently ignoring them. Before, `pseudonymize(text, vault, { name: [...] })` or `piiMiddleware({ vault, names: [...] })` ran without error and sent the original name to the model. The message names the key, lists the allowed keys and suggests a fix (`Did you mean 'names'?`, or `detect: { names }` for adapters); it never includes option values. `piiMiddleware` and `wrapOpenAI` check at creation, including the nested `detect` options.
