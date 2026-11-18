@@ -356,7 +356,7 @@ LEAK_TOTAL 0
 - 두 글자 직함 단독(박사님·상무님·하사님)과 흔한 세 글자 직함(정비사님·진행자님·상담원님)은 이름으로 보지 않습니다. 다만 `고객 정비원님`·`성명: 정비원` 처럼 강한 문맥이 있으면 세 글자 직함도 이름으로 봅니다(유출보다 과잉 치환 쪽). `회원 정상인 경우` 처럼 문맥 낱말 뒤 '낱말+인' 도 이름으로 볼 수 있습니다. 유출이 아니라 불필요하게 바꾸는 쪽의 오류이고, 답에서는 원래 낱말로 복원됩니다.
 - 주소·여권·운전면허·법인등록번호 탐지, ML 기반 이름 인식, vault 저장·암호화, ai@6·openai Responses API·Anthropic SDK 래퍼.
 - JSON 복원기는 가명이 이스케이프 없이 들어 있을 때만 찾습니다(모델이 한글을 `\uXXXX` 로 내보내면 못 찾음).
-- `openai`: `chat.completions.create` 만 감쌉니다. 감싼 `create` 는 일반 Promise 를 돌려줘 `.withResponse()`·`.asResponse()` 가 없고, 감싼 스트림은 `tee()` 를 지원하지 않습니다(`KoPiiError`).
+- `openai`: `chat.completions.create` 만 감쌉니다. 감싼 `create` 는 일반 Promise 를 돌려줘 `.withResponse()`·`.asResponse()` 가 없고, 감싼 스트림은 `tee()` 를 지원하지 않습니다(`KoPiiError`). `chat.completions.parse`·`stream`·`runTools` 는 SDK 가 감싸지 않은 `create` 를 내부에서 다시 부르므로 `KoPiiError` 로 거부합니다(스트리밍은 `create({ ..., stream: true })` 를 쓰세요).
 - AI SDK: 사용자 메시지의 파일 파트(이미지·PDF)는 가명 처리하지 않습니다. 미들웨어 명세 v4(ai@7)만 지원합니다.
 
 ## API
@@ -463,7 +463,7 @@ npx vitest run test/stream.property.test.ts --silent=false
 
 ```bash
 npm install         # 빌드(tsdown)에 Node 22.18 이상 필요(.nvmrc)
-npm test            # 빌드 + 타입 검사 + 테스트(314개)
+npm test            # 빌드 + 타입 검사 + 테스트(315개)
 npm run example     # 연습용 목 데모
 npm run test:consumers   # 빌드 결과를 임시 프로젝트(ESM·CJS)에 설치해 확인
 ```

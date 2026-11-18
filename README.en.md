@@ -362,7 +362,7 @@ This demo is a **practice mock, not a real LLM**. The mock model quotes placehol
 - Two-character bare titles (박사님, 상무님, 하사님) and common three-character titles (정비사님, 진행자님, 상담원님) are not treated as names. However, with strong context such as `고객 정비원님` or `성명: 정비원`, three-character titles are treated as names too (erring toward over-replacement rather than leaks). A "word + 인" after a context word, as in `회원 정상인 경우`, may also be read as a name. This is an error on the side of unnecessary replacement, not leakage, and the answer restores the original word.
 - Address, passport, driver's license and corporate registration number detection, ML-based name recognition, vault storage and encryption, and wrappers for ai@6, the openai Responses API and the Anthropic SDK.
 - The JSON restorer finds placeholders only when they appear without escaping (it cannot find them if the model emits Hangul as `\uXXXX`).
-- `openai`: only `chat.completions.create` is wrapped. The wrapped `create` returns a plain Promise, so `.withResponse()` and `.asResponse()` are absent, and the wrapped stream does not support `tee()` (`KoPiiError`).
+- `openai`: only `chat.completions.create` is wrapped. The wrapped `create` returns a plain Promise, so `.withResponse()` and `.asResponse()` are absent, and the wrapped stream does not support `tee()` (`KoPiiError`). `chat.completions.parse`, `stream` and `runTools` are rejected with `KoPiiError` because the SDK calls the unwrapped `create` internally (use `create({ ..., stream: true })` for streaming).
 - AI SDK: file parts (images, PDFs) of user messages are not pseudonymized. Only middleware spec v4 (ai@7) is supported.
 
 ## API
@@ -469,7 +469,7 @@ npx vitest run test/stream.property.test.ts --silent=false
 
 ```bash
 npm install         # building (tsdown) needs Node 22.18 or later (.nvmrc)
-npm test            # build + type check + tests (314)
+npm test            # build + type check + tests (315)
 npm run example     # practice mock demo
 npm run test:consumers   # install the build output into temporary projects (ESM and CJS) and check it
 ```
